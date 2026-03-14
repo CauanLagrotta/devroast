@@ -83,7 +83,7 @@ export default function HomeClient() {
 				</div>
 
 				{/* Code Input */}
-				<CodeBlock className="w-[780px] h-[360px]">
+				<CodeBlock className="w-[780px] h-[360px]" language={language}>
 					<CodeHeader className="h-10">
 						<CodeDot color="red" />
 						<CodeDot color="amber" />
@@ -106,13 +106,6 @@ export default function HomeClient() {
 								<span key={i}>{i + 1}</span>
 							))}
 						</CodeLineNumbers>
-						<textarea
-							className="flex-1 h-full resize-none bg-transparent font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none p-3 leading-relaxed"
-							placeholder="// paste your terrible code here..."
-							value={code}
-							onChange={(e) => setCode(e.target.value)}
-							spellCheck={false}
-						/>
 					</CodeBody>
 				</CodeBlock>
 
