@@ -12,16 +12,23 @@ const codeBlockVariants = tv({
 export interface CodeBlockProps extends HTMLAttributes<HTMLDivElement> {
   /** Optional: Force a specific language instead of auto-detection */
   language?: string;
+  /** Whether to show line numbers */
+  showLineNumbers?: boolean;
 }
 
 const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
-  ({ className, language, children, ...props }, ref) => {
+  ({ className, language, showLineNumbers = true, children, ...props }, ref) => {
     const [highlightedHtml, setHighlightedHtml] = useState('');
     const codeRef = useRef<HTMLDivElement>(null);
 
     // Update highlighted HTML when content or language changes
     useEffect(() => {
-      const codeContent = codeRef.current?.textContent || '';
+      // Get text content from ref
+      let codeContent = '';
+      if (codeRef.current) {
+        codeContent = codeRef.current.textContent || '';
+      }
+      
       if (codeContent.trim() !== '') {
         try {
           const langToUse = language || 'auto';
@@ -30,12 +37,12 @@ const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
           if (langToUse === 'auto') {
             result = hljs.highlightAuto(codeContent);
           } else {
-            // Verify language exists, fallback to plaintext if not
-            if (hljs.getLanguage(langToUse)) {
-              result = hljs.highlight(codeContent, { language: langToUse });
-            } else {
-              result = hljs.highlight(codeContent, { language: 'plaintext' });
-            }
+              // Verify language exists, fallback to plaintext if not
+              if (hljs.getLanguage(langToUse)) {
+                result = hljs.highlight(codeContent, { language: langToUse });
+              } else {
+                result = hljs.highlight(codeContent, { language: 'plaintext' });
+              }
           }
           
           setHighlightedHtml(result.value);
@@ -56,6 +63,42 @@ const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
       }
     }, []);
 
+    // Generate line numbers from the highlighted content or children
+    const getLineCount = (): number => {
+      // Try to get from highlighted content first (more accurate)
+      if (highlightedHtml) {
+        // Count <div> tags which represent lines in highlight.js output
+        const divMatches = highlightedHtml.match(/<div/g);
+        if (divMatches) {
+          return divMatches.length;
+        }
+      }
+      
+      // Fallback to children
+      if (children == null) return 0;
+      
+      // Convert ReactNode to string
+      let content = '';
+      if (typeof children === 'string') {
+        content = children;
+      } else if (typeof children === 'number' || typeof children === 'boolean') {
+        content = String(children);
+      } else if (Array.isArray(children)) {
+        content = children.map(child => 
+          typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean' 
+            ? String(child) 
+            : ''
+        ).join('\n');
+      } else {
+        content = String(children);
+      }
+      
+      return content.trim() === '' ? 0 : content.split('\n').length;
+    };
+
+    const lineCount = getLineCount();
+    const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
+
     return (
       <div
         className={codeBlockVariants({ className })}
@@ -63,29 +106,43 @@ const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
         dir="ltr"
         {...props}
       >
-        <div ref={codeRef} 
-             style={{ 
-               outline: 'none', 
-               direction: 'ltr', 
-               textAlign: 'left',
-               minHeight: '100px',
-               padding: '1rem',
-               overflow: 'auto'
-             }}
-             contentEditable="true"
-             suppressContentEditableWarning
-             onInput={(e) => {
-               // Update parent component's state if needed
-               // Note: In a real implementation, you'd want to lift state up
-               // For now, we're managing the highlighting locally
-             }}
-          >
-          {highlightedHtml && (
-            <div 
-              dangerouslySetInnerHTML={{ __html: highlightedHtml }} 
-              style={{ pointerEvents: 'none' }} 
-            />
+        <div className="flex">
+          {showLineNumbers && (
+            <CodeLineNumbers className="w-[2.5rem] shrink-0 flex-none">
+              {lineNumbers.map((lineNumber) => (
+                <div key={lineNumber} className="flex items-end">
+                  {lineNumber}
+                </div>
+              ))}
+            </CodeLineNumbers>
           )}
+          <div className="flex-1 min-w-0">
+            <div 
+              ref={codeRef} 
+              style={{ 
+                outline: 'none', 
+                direction: 'ltr', 
+                textAlign: 'left',
+                minHeight: '100px',
+                padding: '1rem',
+                overflow: 'auto'
+              }}
+              contentEditable="true"
+              suppressContentEditableWarning
+              onInput={(e) => {
+                // Update parent component's state if needed
+                // Note: In a real implementation, you'd want to lift state up
+                // For now, we're managing the highlighting locally
+              }}
+            >
+              {highlightedHtml && (
+                <div 
+                  dangerouslySetInnerHTML={{ __html: highlightedHtml }} 
+                  style={{ pointerEvents: 'none' }} 
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -185,7 +242,7 @@ const CodeBody = forwardRef<HTMLDivElement, CodeBodyProps>(
 CodeBody.displayName = "CodeBody";
 
 const codeLineNumbersVariants = tv({
-  base: "flex flex-col items-end pr-3 pl-2.5 py-3 border-r border-border-primary text-xs text-text-tertiary gap-1.5 select-none",
+  base: "flex flex-col items-end px-2 py-2 border-r border-border-primary text-xs text-text-tertiary select-none",
 });
 
 export interface CodeLineNumbersProps extends HTMLAttributes<HTMLDivElement> {}
@@ -207,7 +264,7 @@ const CodeLineNumbers = forwardRef<HTMLDivElement, CodeLineNumbersProps>(
 CodeLineNumbers.displayName = "CodeLineNumbers";
 
 const codeContentVariants = tv({
-  base: "flex flex-col py-3 px-3 text-sm text-text-secondary gap-1.5",
+  base: "flex flex-col py-2 px-2 text-xs text-text-secondary",
 });
 
 export interface CodeContentProps extends HTMLAttributes<HTMLDivElement> {}
