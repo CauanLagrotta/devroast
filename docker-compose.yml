@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: devroast-postgres
+    environment:
+      POSTGRES_USER: devroast
+      POSTGRES_PASSWORD: devroast_password
+      POSTGRES_DB: devroast
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devroast"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
